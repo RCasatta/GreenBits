@@ -680,7 +680,8 @@ public class SPV {
                     }
                 }
                 Log.d(TAG, "Creating block chain");
-                mBlockChain = new BlockChain(mService.getNetworkParameters(), mBlockStore);
+                org.bitcoinj.core.Context context = new org.bitcoinj.core.Context(mService.getNetworkParameters());
+                mBlockChain = new BlockChain(context, mBlockStore);
                 mBlockChain.addTransactionReceivedListener(mTxListner);
 
                 System.setProperty("user.home", mService.getFilesDir().toString());
