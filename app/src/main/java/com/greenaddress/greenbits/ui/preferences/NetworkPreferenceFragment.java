@@ -94,6 +94,7 @@ public class NetworkPreferenceFragment extends GAPreferenceFragment {
 
             if (selectedPreferences.size() == 1) {
                 mService.cfg().edit().putString("network_selected", selectedPreferences.toArray()[0].toString()).apply();
+                mService.updateSelectedNetwork();
             }
             return true;
         });

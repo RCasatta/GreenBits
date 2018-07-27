@@ -34,13 +34,15 @@ public abstract class LoginActivity extends GaActivity {
         }
     }
 
-    protected void checkPinExist() {
-        final SharedPreferences prefs = mService.getPinPref();
+    protected void checkPinExist(final boolean fromPinActivity) {
+        final String ident = mService.getPinPref().getString("ident", null);
 
-        final String ident = prefs.getString("ident", null);
-
-        if (ident == null) {
+        if (fromPinActivity && ident == null) {
             startActivity(new Intent(this, FirstScreenActivity.class));
+            finish();
+        }
+        if (!fromPinActivity && ident != null) {
+            startActivity(new Intent(this, PinActivity.class));
             finish();
         }
     }
@@ -55,16 +57,13 @@ public abstract class LoginActivity extends GaActivity {
             final MaterialDialog materialDialog = UI.popup(this, R.string.select_network, R.string.choose, R.string.choose_and_default)
                     .items(networkSelectorList)
                     .itemsCallbackSingleChoice(0, (dialog, v, which, text) -> {
-
                         selectedNetwork(text.toString(), false);
-                        if (fromPinActivity)
-                            checkPinExist();
+                        checkPinExist(fromPinActivity);
                         return true;
                     })
                     .onNegative((dialog, which) -> {
                         selectedNetwork(networkSelectorList.get(dialog.getSelectedIndex()), true);
-                        if (fromPinActivity)
-                            checkPinExist();
+                        checkPinExist(fromPinActivity);
                     })
                     .build();
 
