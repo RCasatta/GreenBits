@@ -15,9 +15,15 @@ import android.webkit.URLUtil;
 import android.widget.Toast;
 
 import com.google.common.base.Joiner;
+import com.greenaddress.greenapi.Network2;
 import com.greenaddress.greenbits.ui.R;
 import com.greenaddress.greenbits.ui.UI;
+import com.squareup.okhttp.Callback;
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.Response;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -36,6 +42,9 @@ public class NetworkPreferenceFragment extends GAPreferenceFragment {
     private static final String TAG = GAPreferenceFragment.class.getSimpleName();
     private static final int QRSCANNER = 1338;
     private static final int CAMERA_PERMISSION = 150;
+
+    private ListPreference mNetworkCustomRemove;
+    private MultiSelectListPreference mNetworkSelector;
 
     @Override
     public void onCreate(final Bundle savedInstanceState) {
@@ -73,82 +82,61 @@ public class NetworkPreferenceFragment extends GAPreferenceFragment {
         final Set<String> customNetworks = mService.cfg().getStringSet("custom_networks", new HashSet<>());
 
         // Network selector
-        final MultiSelectListPreference networkSelector = find("network_selector");
-        networkSelector.setOnPreferenceChangeListener((preference, selectedPreferencesObject) -> {
+        mNetworkSelector = find("network_selector");
+        mNetworkSelector.setOnPreferenceChangeListener((preference, selectedPreferencesObject) -> {
             final Set<String> selectedPreferences = (Set<String>) selectedPreferencesObject;
             if (selectedPreferences.isEmpty()) {
                 UI.toast(getActivity(), "Cannot select any network. selecting Bitcoin by default", Toast.LENGTH_LONG);
                 selectedPreferences.add("Bitcoin");
                 mService.cfg().edit().putStringSet("network_selector", selectedPreferences).apply();
             }
-            networkSelector.setSummary( Joiner.on(", ").join(selectedPreferences) );
+            mNetworkSelector.setSummary( Joiner.on(", ").join(selectedPreferences) );
 
             return true;
         });
         final Set<String> selectedPreferences = mService.cfg().getStringSet("network_selector", new HashSet<>());
-        networkSelector.setSummary( Joiner.on(", ").join(selectedPreferences) );
+        mNetworkSelector.setSummary( Joiner.on(", ").join(selectedPreferences) );
 
-        final ListPreference networkCustomRemove = find("custom_networks_remove");
+        mNetworkCustomRemove = find("custom_networks_remove");
         final String[] entries = customNetworks.toArray(new String[customNetworks.size()]);
-        networkCustomRemove.setEntries(entries);
-        networkCustomRemove.setEntryValues(entries);
-        networkCustomRemove.setOnPreferenceChangeListener((preference, newValue) -> {
-            final Set<String> customNetworksNew = mService.cfg().getStringSet("custom_networks", new HashSet<>());
-            customNetworksNew.remove(newValue);
-            final Set<String> networkSelectorPreferences = mService.cfg().getStringSet("network_selector", new HashSet<>());
-            if (networkSelectorPreferences.contains(newValue)) {
-                networkSelectorPreferences.remove(newValue);
-                mService.cfg().edit()
-                        .putStringSet("network_selector", networkSelectorPreferences)
-                        .apply();
-                networkSelector.setSummary( Joiner.on(", ").join(networkSelectorPreferences) );
-
-            }
-            syncCustomNetworks(networkCustomRemove, networkSelector, customNetworksNew);
-
+        mNetworkCustomRemove.setEntries(entries);
+        mNetworkCustomRemove.setEntryValues(entries);
+        mNetworkCustomRemove.setOnPreferenceChangeListener((preference, newValue) -> {
+            removeNetwork(newValue.toString());
             return true;
         });
 
         final EditTextPreference networkCustomAdd = find("custom_networks_add");
         networkCustomAdd.setOnPreferenceChangeListener((preference, newValue) -> {
             if (URLUtil.isValidUrl(newValue.toString())) {
-                final Set<String> customNetworksNew = mService.cfg().getStringSet("custom_networks", new HashSet<>());
-                if (customNetworksNew.contains(newValue.toString())) {
-                    UI.toast(getActivity(), "Custom URL already present", Toast.LENGTH_LONG);
-                } else {
-                    customNetworksNew.add(newValue.toString());
-                    syncCustomNetworks(networkCustomRemove, networkSelector, customNetworksNew);
-                    UI.toast(getActivity(), "Custom URL added, enable it in the Network selector chooser", Toast.LENGTH_LONG);
-                }
+                addNetworkFromUrl(newValue.toString());
             } else {
                 UI.toast(getActivity(), "Not a valid URL", Toast.LENGTH_LONG);
             }
-
             return true;
         });
 
         final Preference networkCustomAddQr = find("custom_networks_add_qr");
         networkCustomAddQr.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
             @Override
-            public boolean onPreferenceClick(Preference preference) {
+            public boolean onPreferenceClick(final Preference preference) {
                 onScanClicked();
                 return true;
             }
         });
 
-        syncCustomNetworks(networkCustomRemove, networkSelector, customNetworks);
-
+        syncCustomNetworks(customNetworks);
     }
 
-    private void syncCustomNetworks(ListPreference networkCustomRemove, MultiSelectListPreference networkSelector, Set<String> customNetworksNew) {
+    private void syncCustomNetworks(final Set<String> customNetworksNew) {
         mService.cfg().edit()
                 .putStringSet("custom_networks", customNetworksNew)
                 .apply();
         final List<String> customNetworksNewList = new ArrayList<>(customNetworksNew);
         Collections.sort(customNetworksNewList);
         final String[] entriesNow = customNetworksNewList.toArray(new String[customNetworksNewList.size()]);
-        networkCustomRemove.setEntries(entriesNow);
-        networkCustomRemove.setEntryValues(entriesNow);
+        mNetworkCustomRemove.setEntries(entriesNow);
+        mNetworkCustomRemove.setEntryValues(entriesNow);
 
         final String[] standardNetworks = getResources().getStringArray(R.array.available_networks);
         final List<String> standardAndCustomNetworks = new ArrayList<>();
@@ -156,8 +144,8 @@ public class NetworkPreferenceFragment extends GAPreferenceFragment {
         standardAndCustomNetworks.addAll( customNetworksNewList );
 
         final String[] standardAndCustomNetworksArray = standardAndCustomNetworks.toArray(new String[standardAndCustomNetworks.size()]);
-        networkSelector.setEntries(standardAndCustomNetworksArray);
-        networkSelector.setEntryValues(standardAndCustomNetworksArray);
+        mNetworkSelector.setEntries(standardAndCustomNetworksArray);
+        mNetworkSelector.setEntryValues(standardAndCustomNetworksArray);
     }
 
     private final Preference.OnPreferenceChangeListener mListener = new Preference.OnPreferenceChangeListener() {
@@ -169,6 +157,64 @@ public class NetworkPreferenceFragment extends GAPreferenceFragment {
             return true;
         }
     };
+
+    private void addNetworkFromUrl(final String url){
+        final OkHttpClient httpClient = new OkHttpClient();
+        final Request request = new Request.Builder().url(url)
+                .addHeader("Accept", "application/json").build();
+        httpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(final Request request, final IOException e) {
+                UI.toast(getActivity(), "Not a valid URL", Toast.LENGTH_LONG);
+            }
+
+            @Override
+            public void onResponse(final Response response) {
+                try {
+                    addNetwork(response.body().string());
+                } catch (final Exception e) {
+                    UI.toast(getActivity(), "Not a valid Network config", Toast.LENGTH_LONG);
+                }
+            }
+        });
+    }
+
+    private void addNetwork(final String networkConfig) {
+        final Network2 network = Network2.from(networkConfig);
+        final Set<String> customNetworksNew = mService.cfg().getStringSet("custom_networks", new HashSet<>());
+        if (customNetworksNew.contains(network.getName().toString())) {
+            UI.toast(getActivity(), "Custom Network already present", Toast.LENGTH_LONG);
+            return;
+        }
+        customNetworksNew.add(network.getName().toString());
+        UI.toast(getActivity(), "Custom Network added, enable it in the Network selector chooser", Toast.LENGTH_LONG);
+        syncCustomNetworks(customNetworksNew);
+
+        mService.cfg().edit()
+                .putString("network_" + network.getName(), networkConfig)
+                .apply();
+
+    }
+
+    private void removeNetwork(final String networkName) {
+        final Set<String> customNetworksNew = mService.cfg().getStringSet("custom_networks", new HashSet<>());
+        if (!customNetworksNew.contains(networkName)) {
+            UI.toast(getActivity(), "Custom Network not found", Toast.LENGTH_LONG);
+            return;
+        }
+        final Set<String> networkSelectorPreferences = mService.cfg().getStringSet("network_selector", new HashSet<>());
+        if (networkSelectorPreferences.contains(networkName)) {
+            UI.toast(getActivity(), "Deselect Custom Network before remove", Toast.LENGTH_LONG);
+            return;
+        }
+        customNetworksNew.remove(networkName);
+        networkSelectorPreferences.remove(networkName);
+        syncCustomNetworks(customNetworksNew);
+
+        mService.cfg().edit()
+                .remove("network_" + networkName)
+                .apply();
+    }
 
     private void onScanClicked() {
         final String[] perms = { "android.permission.CAMERA" };
@@ -187,8 +233,8 @@ public class NetworkPreferenceFragment extends GAPreferenceFragment {
         switch (requestCode) {
             case QRSCANNER:
                 if (data != null && data.getStringExtra(ScanActivity.INTENT_EXTRA_RESULT) != null) {
-                    String config = data.getStringExtra(ScanActivity.INTENT_EXTRA_RESULT);
-                    Log.d(TAG, "Network config: " + config);
+                    final String networkConfig = data.getStringExtra(ScanActivity.INTENT_EXTRA_RESULT);
+                    addNetwork(networkConfig);
                 }
                 break;
         }
