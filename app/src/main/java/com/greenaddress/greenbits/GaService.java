@@ -253,10 +253,20 @@ public class GaService extends Service implements INotificationHandler {
         }
     }
 
-    public File getSPVChainFile() {
-        final String dirName = "blockstore_" + mReceivingId;
+    public File getSPVChainFile(final String networkName) {
+        final String dirName;
+        if (getNetwork().isMainnet()) {
+            dirName = "blockstore_" + mReceivingId;
+        } else {
+            dirName = "blockstore_" + networkName;
+        }
+
         Log.i(TAG, "dirName:" + dirName);
         return new File(getDir(dirName, Context.MODE_PRIVATE), "blockchain.spvchain");
+    }
+
+    public File getSPVChainFile() {
+        return getSPVChainFile(getNetwork().getName());
     }
 
     private void getAvailableTwoFactorMethods() {
