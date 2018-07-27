@@ -34,16 +34,20 @@ public abstract class LoginActivity extends GaActivity {
         }
     }
 
-    protected void checkPinExist(final boolean fromPinActivity) {
+    protected void checkPinExist(final boolean fromPinActivity, final MaterialDialog dialog) {
         final String ident = mService.getPinPref().getString("ident", null);
 
         if (fromPinActivity && ident == null) {
             mService.cfgEdit("network").putBoolean("redirect", true).apply();
+            if (dialog!=null)
+                dialog.dismiss();
             startActivity(new Intent(this, FirstScreenActivity.class));
             finish();
         }
         if (!fromPinActivity && ident != null) {
             mService.cfgEdit("network").putBoolean("redirect", true).apply();
+            if (dialog!=null)
+                dialog.dismiss();
             startActivity(new Intent(this, PinActivity.class));
             finish();
         }
@@ -71,13 +75,13 @@ public abstract class LoginActivity extends GaActivity {
                     .itemsCallbackSingleChoice(0, (dialog, v, which, text) -> {
                         selectedNetwork(text.toString(), false);
                         mService.cfgEdit("network").putBoolean("asked", true).apply();
-                        checkPinExist(fromPinActivity);
+                        checkPinExist(fromPinActivity, dialog);
                         return true;
                     })
                     .onNegative((dialog, which) -> {
                         selectedNetwork(networkSelectorList.get(dialog.getSelectedIndex()), true);
                         mService.cfgEdit("network").putBoolean("asked", true).apply();
-                        checkPinExist(fromPinActivity);
+                        checkPinExist(fromPinActivity, dialog);
                     })
                     .build();
 

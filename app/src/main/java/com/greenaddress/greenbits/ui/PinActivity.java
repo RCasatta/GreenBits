@@ -281,7 +281,7 @@ public class PinActivity extends LoginActivity implements Observer, View.OnClick
 
         chooseNetworkIfMany(true);
 
-        checkPinExist(true);
+        checkPinExist(true, null);
 
         super.onResumeWithService();
     }
