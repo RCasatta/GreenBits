@@ -92,6 +92,9 @@ public class NetworkPreferenceFragment extends GAPreferenceFragment {
             }
             mNetworkSelector.setSummary( Joiner.on(", ").join(selectedPreferences) );
 
+            if (selectedPreferences.size() == 1) {
+                mService.cfg().edit().putString("network_selected", selectedPreferences.toArray()[0].toString()).apply();
+            }
             return true;
         });
         final Set<String> selectedPreferences = mService.cfg().getStringSet("network_selector", new HashSet<>());
