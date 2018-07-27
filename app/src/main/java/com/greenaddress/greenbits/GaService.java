@@ -465,6 +465,9 @@ public class GaService extends Service implements INotificationHandler {
                     .putStringSet("network_selector", networkSelector)
                     .apply();
         }
+        cfgEdit("network")
+                .putBoolean("asked",false)
+                .putBoolean("redirect",false).apply();
 
         mClient = new WalletClient(this, mExecutor);
 

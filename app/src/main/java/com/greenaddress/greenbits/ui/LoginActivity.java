@@ -38,16 +38,28 @@ public abstract class LoginActivity extends GaActivity {
         final String ident = mService.getPinPref().getString("ident", null);
 
         if (fromPinActivity && ident == null) {
+            mService.cfgEdit("network").putBoolean("redirect", true).apply();
             startActivity(new Intent(this, FirstScreenActivity.class));
             finish();
         }
         if (!fromPinActivity && ident != null) {
+            mService.cfgEdit("network").putBoolean("redirect", true).apply();
             startActivity(new Intent(this, PinActivity.class));
             finish();
         }
     }
 
     protected void chooseNetworkIfMany(final boolean fromPinActivity) {
+        final boolean asked = mService.cfg("network").getBoolean("asked", false);
+        final boolean redirect = mService.cfg("network").getBoolean("redirect", false);
+        mService.cfgEdit("network")
+                .putBoolean("asked",false)
+                .putBoolean("redirect",false).apply();
+        if(asked && redirect) {
+            return;
+        }
+
+
         final Set<String> networkSelector = mService.cfg().getStringSet("network_selector", new HashSet<>());
         if (networkSelector.size()>1) {
             final Set<String> networkSelectorSet = mService.cfg().getStringSet("network_selector", new HashSet<>());
@@ -58,11 +70,13 @@ public abstract class LoginActivity extends GaActivity {
                     .items(networkSelectorList)
                     .itemsCallbackSingleChoice(0, (dialog, v, which, text) -> {
                         selectedNetwork(text.toString(), false);
+                        mService.cfgEdit("network").putBoolean("asked", true).apply();
                         checkPinExist(fromPinActivity);
                         return true;
                     })
                     .onNegative((dialog, which) -> {
                         selectedNetwork(networkSelectorList.get(dialog.getSelectedIndex()), true);
+                        mService.cfgEdit("network").putBoolean("asked", true).apply();
                         checkPinExist(fromPinActivity);
                     })
                     .build();
