@@ -487,7 +487,7 @@ public class RequestLoginActivity extends LoginActivity implements OnDiscoveredT
 
         if (mUsb == null) {
             // No hardware wallet, jump to PIN or mnemonic entry
-            if (mService.cfg("pin").getString("ident", null) != null)
+            if (mService.getPinPref().getString("ident", null) != null)
                 startActivityForResult(new Intent(this, PinActivity.class), 0);
             else
                 startActivityForResult(new Intent(this, MnemonicActivity.class), 0);

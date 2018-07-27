@@ -92,7 +92,7 @@ public class PinActivity extends LoginActivity implements Observer, View.OnClick
                  mPinLoginButton.stopLoading();
                  UI.enable(mPinText);
                  UI.show(mPinError);
-                 final int counter = mService.cfg("pin").getInt("counter", 1);
+                 final int counter = mService.getPinPref().getInt("counter", 1);
                  mPinError.setText(getString(R.string.attemptsLeft, 3 - counter));
               }
          });
@@ -113,7 +113,7 @@ public class PinActivity extends LoginActivity implements Observer, View.OnClick
         Futures.addCallback(loginFuture, new FutureCallback<LoginData>() {
             @Override
             public void onSuccess(final LoginData result) {
-                mService.cfgEdit("pin").putInt("counter", 0).apply();
+                mService.getEditPinPref().putInt("counter", 0).apply();
                 if (getCallingActivity() == null) {
                     onLoginSuccess();
                     return;
@@ -125,7 +125,7 @@ public class PinActivity extends LoginActivity implements Observer, View.OnClick
             @Override
             public void onFailure(final Throwable t) {
                 final String message;
-                final SharedPreferences prefs = mService.cfg("pin");
+                final SharedPreferences prefs = mService.getPinPref();
                 final int counter = prefs.getInt("counter", 0) + 1;
 
                 final Throwable error;
@@ -169,7 +169,8 @@ public class PinActivity extends LoginActivity implements Observer, View.OnClick
     @Override
     protected void onCreateWithService(final Bundle savedInstanceState) {
 
-        final SharedPreferences prefs = mService.cfg("pin");
+        final SharedPreferences prefs = mService.getPinPref();
+
         final String ident = prefs.getString("ident", null);
 
         if (ident == null) {
@@ -177,8 +178,6 @@ public class PinActivity extends LoginActivity implements Observer, View.OnClick
             finish();
             return;
         }
-
-
 
         setContentView(R.layout.activity_pin);
         mPinLoginButton = UI.find(this, R.id.pinLoginButton);
@@ -221,7 +220,7 @@ public class PinActivity extends LoginActivity implements Observer, View.OnClick
             return;
         }
 
-        final SharedPreferences prefs = mService.cfg("pin");
+        final SharedPreferences prefs = mService.getPinPref();
         final String nativePIN = prefs.getString("native", null);
         final String nativeIV = prefs.getString("nativeiv", null);
 
@@ -291,7 +290,9 @@ public class PinActivity extends LoginActivity implements Observer, View.OnClick
     public void onResumeWithService() {
         mService.addConnectionObserver(this);
 
-        chooseNetworkIfMany();
+        chooseNetworkIfMany(true);
+
+        checkPinExist();
 
         super.onResumeWithService();
     }

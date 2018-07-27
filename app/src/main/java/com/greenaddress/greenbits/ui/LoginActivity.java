@@ -34,8 +34,18 @@ public abstract class LoginActivity extends GaActivity {
         }
     }
 
+    protected void checkPinExist() {
+        final SharedPreferences prefs = mService.getPinPref();
 
-    protected void chooseNetworkIfMany() {
+        final String ident = prefs.getString("ident", null);
+
+        if (ident == null) {
+            startActivity(new Intent(this, FirstScreenActivity.class));
+            finish();
+        }
+    }
+
+    protected void chooseNetworkIfMany(final boolean fromPinActivity) {
         final Set<String> networkSelector = mService.cfg().getStringSet("network_selector", new HashSet<>());
         if (networkSelector.size()>1) {
             final Set<String> networkSelectorSet = mService.cfg().getStringSet("network_selector", new HashSet<>());
@@ -47,11 +57,14 @@ public abstract class LoginActivity extends GaActivity {
                     .itemsCallbackSingleChoice(0, (dialog, v, which, text) -> {
 
                         selectedNetwork(text.toString(), false);
+                        if (fromPinActivity)
+                            checkPinExist();
                         return true;
                     })
                     .onNegative((dialog, which) -> {
                         selectedNetwork(networkSelectorList.get(dialog.getSelectedIndex()), true);
-
+                        if (fromPinActivity)
+                            checkPinExist();
                     })
                     .build();
 

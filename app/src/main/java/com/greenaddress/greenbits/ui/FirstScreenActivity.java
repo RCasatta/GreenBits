@@ -273,12 +273,12 @@ public class FirstScreenActivity extends LoginActivity {
         final boolean userCancelled = mService.getUserCancelledPINEntry();
         mService.setUserCancelledPINEntry(false);
 
-        chooseNetworkIfMany();
+        chooseNetworkIfMany(false);  //TODO if coming from pin activity just asked
 
         //FIXME : recheck state, properly handle TEE link anyway
         if (mService.isLoggedIn()) {
             onLoginSuccess();
-        } else if (mService.cfg("pin").getString("ident", null) != null && !userCancelled) {
+        } else if ( mService.getPinPref().getString("ident", null) != null && !userCancelled) {
             startActivity(new Intent(this, PinActivity.class));
             finish();
         }

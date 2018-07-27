@@ -123,6 +123,18 @@ public class GaService extends Service implements INotificationHandler {
         return network.isElements();
     }
 
+    public SharedPreferences getPinPref() {
+        if(getNetwork().isMainnet()) {
+            return cfg("pin");
+        } else {
+            return cfg(getNetwork().getName() + "_pin");
+        }
+    }
+
+    public SharedPreferences.Editor getEditPinPref() {
+        return getPinPref().edit();
+    }
+
     private enum ConnState {
         OFFLINE, DISCONNECTED, CONNECTING, CONNECTED, LOGGINGIN, LOGGEDIN
     }
@@ -890,7 +902,7 @@ public class GaService extends Service implements INotificationHandler {
                 // As this is a new PIN, save it to config
                 final String encrypted = Base64.encodeToString(pinData.mSalt, Base64.NO_WRAP) + ';' +
                                          Base64.encodeToString(pinData.mEncryptedData, Base64.NO_WRAP);
-                cfgEdit("pin").putString("ident", pinData.mPinIdentifier)
+                getEditPinPref().putString("ident", pinData.mPinIdentifier)
                               .putInt("counter", 0)
                               .putString("encrypted", encrypted)
                               .apply();
@@ -900,9 +912,9 @@ public class GaService extends Service implements INotificationHandler {
     }
 
     public ListenableFuture<LoginData> pinLogin(final String pin) throws Exception {
-        final String pinIdentifier = cfg("pin").getString("ident", null);
+        final String pinIdentifier = getPinPref().getString("ident", null);
         final byte[] password = mClient.getPinPassword(pinIdentifier, pin);
-        final String[] split = cfg("pin").getString("encrypted", null).split(";");
+        final String[] split = getPinPref().getString("encrypted", null).split(";");
         final byte[] salt = split[0].getBytes();
         final byte[] encryptedData = Base64.decode(split[1], Base64.NO_WRAP);
         final PinData pinData = PinData.fromEncrypted(pinIdentifier, salt, encryptedData, password);
