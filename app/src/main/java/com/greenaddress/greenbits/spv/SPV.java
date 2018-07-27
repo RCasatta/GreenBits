@@ -609,11 +609,6 @@ public class SPV {
 
     private void addPeer(final String address, final NetworkParameters params) throws URISyntaxException {
 
-        if (address.isEmpty() && !mService.isProxyEnabled()) {
-            // Blank w/o proxy: Use the built in resolving via DNS
-            mPeerGroup.addPeerDiscovery(new DnsDiscovery(params));
-            return;
-        }
         try {
             mPeerGroup.addAddress(getPeerAddress(address));
         } catch (final UnknownHostException e) {
@@ -724,6 +719,12 @@ public class SPV {
 
                 for (final String address: addresses)
                     addPeer(address, mService.getNetworkParameters());
+
+                if (addresses.isEmpty() && !mService.isProxyEnabled()){
+                    // Blank w/o proxy: Use the built in resolving via DNS
+                    mPeerGroup.addPeerDiscovery(new DnsDiscovery(mService.getNetworkParameters()));
+                }
+
             } catch (final BlockStoreException | UnknownHostException | URISyntaxException e) {
                 e.printStackTrace();
             }
